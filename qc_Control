@@ -1,0 +1,101 @@
+ibrary(Seurat)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(clustree)
+library(DoubletFinder)
+
+# set the working directory after cleaning the memory
+setwd("C:/Users/yeimy/Box/Project4, Qin hippo/Cell_Ranger")
+
+# load the data 
+control = Read10X(data.dir = "../Cell_Ranger/control/filtered_feature_bc_matrix")
+
+# Create a Seurat Object 
+RNA_control = CreateSeuratObject(counts = control$`Gene Expression`)
+RNA_control$group = "Control"
+
+# Detelete this file
+rm(control)
+
+# Display the characteristics of the object
+RNA_control
+
+# calculate the proportion of transcripts mapping to mitochondrial genes
+RNA_control[["percent.mt"]] <- PercentageFeatureSet(RNA_control, pattern = "^mt-")
+
+# Visualize QC metrics 
+VlnPlot(RNA_control, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+# percentiles 5% and 10%
+nfeature_data <- RNA_control@meta.data$nFeature_RNA
+q0.05_nfeaturef <- quantile(nfeature_data, 0.05)
+q0.10_nfeaturef <- quantile(nfeature_data, 0.10)
+
+ncount_data <- RNA_control@meta.data$nCount_RNA
+q0.05_ncount <- quantile(ncount_data, 0.05)
+q0.10_ncount <- quantile(ncount_data, 0.10)
+
+# filtering 
+rnaContrFiltr<- subset(RNA_control, subset = nFeature_RNA > 200 & nCount_RNA > 400 & percent.mt < 5)
+
+# Display the characteristics of the object after filtering 
+rnaContrFiltr
+
+# Visualize QC metrics after filtering 
+VlnPlot(rnaContrFiltr, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+
+# 
+rnaContrFiltr<-NormalizeData(object = rnaContrFiltr)
+rnaContrFiltr<-FindVariableFeatures(object = rnaContrFiltr)
+rnaContrFiltr<-ScaleData(object = rnaContrFiltr)
+rnaContrFiltr<-RunPCA(object = rnaContrFiltr)
+ElbowPlot(rnaContrFiltr, ndims = 50)
+rnaContrFiltr<-FindNeighbors(object = rnaContrFiltr, dims = 1:40)
+rnaContrFiltr<-FindClusters(object = rnaContrFiltr)
+rnaContrFiltr<-RunUMAP(object = rnaContrFiltr, dims = 1:40)
+
+# pk
+sweep.res.list_nsclc<- paramSweep(rnaContrFiltr, PCs = 1:40, sct = F)
+sweep.stats_nsclc<-summarizeSweep(sweep.res.list_nsclc, GT = F)
+bcmvn_nsclc<- find.pK(sweep.stats_nsclc)
+
+
+# plotting is not nessesary
+ggplot(bcmvn_nsclc, aes(pK, BCmetric, group = 1))+
+  geom_point() +
+  geom_line()
+pK<- bcmvn_nsclc %>% filter(BCmetric == max(BCmetric)) %>% select(pK)
+pk<-as.numeric(as.character(pK[[1]]))
+
+nExp_poi<-round(0.035*nrow(rnaContrFiltr@meta.data))
+annotations<-rnaContrFiltr@meta.data$seurat_clusters
+homotypic.pop<-modelHomotypic(annotations)
+nExp_poi.adj<- round(nExp_poi*(1-homotypic.pop))
+
+# run doublet finder
+
+rnaContrFiltr<-doubletFinder(rnaContrFiltr, PCs = 1:40,
+                                pN=0.25,
+                                pK=pk,
+                                nExp = nExp_poi.adj,
+                                reuse.pANN = F, sct = F)
+
+# check Df classification
+head(rnaContrFiltr)
+
+# continue the andrey protocol
+
+table(rnaContrFiltr@meta.data$DF.classifications_0.25_0.25_108)
+
+rnaContrFiltr@meta.data$CellID<-rownames(rnaContrFiltr@meta.data)
+
+doubletFiltr<-subset(x = rnaContrFiltr, subset = DF.classifications_0.25_0.25_108 == "Singlet")
+doubletFiltr
+
+singletCellId<-doubletFiltr@meta.data$CellID
+
+setwd("C:/Users/yeimy/Box/Project4, Qin hippo/YGG analysis")
+
+write.table(singletCellId, 'cellNames_doubletFinderFiltered_control.txt', row.names = F, col.names = F, quote = F)
