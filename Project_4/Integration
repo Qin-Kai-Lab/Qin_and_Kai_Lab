@@ -13,6 +13,7 @@ setwd("C:/Users/ygonzalezgiraldo/Box/Project4, Qin hippo")
 controlCellNames<-read.table('cellNames_doubletFinderFiltered_control.txt', F)
 controlCells<-controlCellNames$V1
 
+# OE means overexpression condition
 OECellNames<-read.table('cellNames_doubletFinderFiltered_OE.txt', F)
 OECells<-OECellNames$V1
 
@@ -58,6 +59,7 @@ DefaultAssay(RNA.combined.norm)<-"integrated"
 RNA.combined.norm  <- ScaleData(RNA.combined.norm , verbose = FALSE)
 RNA.combined.norm <- RunPCA(RNA.combined.norm, verbose = FALSE)
 
+# set directory to save elbow and Jackstraw figures
 setwd("C:/Users/ygonzalezgiraldo/Box/Project4, Qin hippo/YGG analysis")
 
 # test PCA
@@ -89,13 +91,13 @@ ggsave("JackStrawPlot_DupFiltr.jpeg", width = 16, height = 10)
 saveRDS(RNA.combined.norm, file = 'RNA.combined.norm')
 
 
-# clustering
+# clustering, modify "dims" according PCs selected
 RNA.combined.norm <- FindNeighbors(RNA.combined.norm, dims = 1:45)
 RNA.combined.norm <- RunUMAP(RNA.combined.norm, reduction = "pca", dims = 1:45)
 resols<-c(0,0.05,0.08,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0)
 RNA.combined.norm <- FindClusters(RNA.combined.norm, resolution = resols)
 
-#save each PC and plots at PC 30, 35, 40 and 45 
+# set directory to save each PC and plots at PC 30, 35, 40 and 45 folders
 setwd("C:/Users/ygonzalezgiraldo/Box/Project4, Qin hippo/YGG analysis/Integration/PC45")
 
 # terst clusters
