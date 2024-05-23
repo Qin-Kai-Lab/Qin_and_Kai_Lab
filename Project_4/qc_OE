@@ -5,7 +5,7 @@ library(gridExtra)
 library(clustree)
 library(DoubletFinder)
 
-# set the working directory after cleaning the memory
+# set the working directory 
 setwd("C:/Users/yeimy/Box/Project4, Qin hippo/Cell_Ranger")
 
 #load the data 
@@ -16,28 +16,24 @@ OE = Read10X(data.dir = "../Cell_Ranger/EO/filtered_feature_bc_matrix")
 RNA_OE = CreateSeuratObject(counts = OE$`Gene Expression`)
 RNA_OE$group = "OE"
 
+# Delete this file
 rm(OE)
 
+# calculate mitochondrial percentage
 RNA_OE[["percent.mt"]] <- PercentageFeatureSet(RNA_OE, pattern = "^mt-")
 RNA_OE
 
+# Visualize qc metrics 
 VlnPlot(RNA_OE, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-
-# percentiles  5%
-nfeature_data <- RNA_OE@meta.data$nFeature_RNA
-q0.05_nfeaturef <- quantile(nfeature_data, 0.05)
-
-ncount_data <- RNA_OE@meta.data$nCount_RNA
-q0.05_ncount <- quantile(ncount_data, 0.05)
-
 
 # filtering 
 rnaoeFiltr<- subset(RNA_OE, subset = nFeature_RNA > 200 & nCount_RNA > 400 & percent.mt < 5)
 rnaoeFiltr
 
+# Visualize qc metrics after filtering
 VlnPlot(rnaoeFiltr, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-
+# perform standard workflow steps 
 rnaoeFiltr<-NormalizeData(object = rnaoeFiltr)
 rnaoeFiltr<-FindVariableFeatures(object = rnaoeFiltr)
 rnaoeFiltr<-ScaleData(object = rnaoeFiltr)
@@ -77,9 +73,6 @@ rnaoeFiltr<-doubletFinder(rnaoeFiltr, PCs = 1:40,
 
 # check Df classification 
 head(rnaoeFiltr)
-
-
-# continue the andrey protocol
 
 table(rnaoeFiltr@meta.data$DF.classifications_0.25_0.27_135)
 
