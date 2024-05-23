@@ -9,6 +9,7 @@ library(DoubletFinder)
 setwd("C:/Users/yeimy/Box/Project4, Qin hippo/Cell_Ranger")
 
 #load the data 
+# OE means overexpression condition
 OE = Read10X(data.dir = "../Cell_Ranger/EO/filtered_feature_bc_matrix")
  
 # Create a Seurat Object 
