@@ -391,9 +391,6 @@ mc_ALL <- ConstructNetwork(
   tom_name = "ALL"
 )
 
-
-#pdf("hdWGCNA_dendrogram_ALL_pc50_res08_k40_032526.pdf", width = 10, height = 7, onefile = TRUE)
-# PNG format
 png("hdWGCNA_dendrogram_ALL_pc50_res08_k40_032526.png", width = 10, height = 7, onefile = TRUE)
 PlotDendrogram(mc_ALL, main='ALL hdWGCNA Dendrogram')
 
@@ -450,7 +447,6 @@ DMEs <- FindDMEs(
 )
 DMEs
 
-
 # TF analysis with hdWGCNA
 
 ah <- AnnotationHub()
@@ -466,7 +462,6 @@ pfm_core <- TFBSTools::getMatrixSet(
   x = sq24,
   opts = list(collection = "CORE", tax_group = 'vertebrates', all_versions = FALSE)
 )
-
 
 mc_ALL <- ModuleExprScore(
   mc_ALL,
@@ -515,7 +510,6 @@ head(results)
 write.csv(results,
           file = "031826_TF_results.csv",
           row.names = FALSE, quote = FALSE)
-
 
 obj_ad  <- subset(mc_ALL, cells = colnames(mc_ALL)[mc_ALL$AD_status == "AD"])
 obj_ctl <- subset(mc_ALL, cells = colnames(mc_ALL)[mc_ALL$AD_status == "control"])
