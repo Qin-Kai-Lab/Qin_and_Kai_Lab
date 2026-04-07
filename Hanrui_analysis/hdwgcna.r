@@ -34,13 +34,62 @@ library(xgboost)
 setwd(WORKDIR)
 
 astro <- LoadH5Seurat(
-  "astro_AD_control_corrected.h5Seurat",
+  "astrocytes.h5Seurat",
   assays     = list(RNA = "counts"),
   reductions = FALSE,
   graphs     = FALSE,
-  images     = FALSE, 
+  images     = FALSE,
   meta.data  = TRUE
 )
+
+astro
+GetAssayData(astro,layer = "counts")                    # list assay names
+DefaultAssay(astro)
+head(astro@meta.data)
+dim(astro)
+
+xlsx_path <- "ROSMAP_ID_Status.xlsx"   # <- change this
+
+samp <- read_excel("ROSMAP_ID_Status.xlsx",sheet = 1, na = c("NA","N/A",""))
+
+samp$individualID <- trimws(as.character(samp$individualID))
+astro@meta.data$individualID <- trimws(as.character(astro@meta.data$individualID))
+
+samp$individualID_excel = samp$individualID
+samp$individualID = NULL
+names(samp)[!names(samp) %in% "individualID_excel"] <-
+  paste0("clin_", names(samp)[!names(samp) %in% "individualID_excel"])
+cell_barcodes <- rownames(astro@meta.data)
+
+astro@meta.data <- astro@meta.data %>%
+  mutate(individualID_cell = individualID) %>%
+  left_join(samp, by = c("individualID_cell" = "individualID_excel"))
+
+
+rownames(astro@meta.data) <- cell_barcodes
+
+
+# Sample selection:
+astro@meta.data <- astro@meta.data %>%
+  mutate(
+    AD_status = case_when(
+      clin_braaksc %in% c(0, 1, 2) &
+        clin_ceradsc == 4 &
+        clin_cogdx == 1 &
+        clin_dcfdx_lv == 1 ~ "control",
+      
+      clin_braaksc %in% c(5, 6) &
+        clin_ceradsc == 1 &
+        clin_cogdx == 4 &
+        clin_dcfdx_lv == 4 ~ "AD",
+    
+      TRUE ~ NA_character_  
+    )
+  )
+
+astro_selected_samples <- subset(astro, subset = AD_status %in% c("AD","control"))
+
+astro = astro_selected_samples
 
 all_genes <- rownames(astro)
 
@@ -75,10 +124,10 @@ cluster_fisher_table <- function(seu,
 
   out <- lapply(clus, function(cl) {
     in_cl <- md[[cluster_col]] == cl
-    a <- sum(in_cl  & md[[status_col]] == case)  # cluster内 AD
-    b <- sum(in_cl  & md[[status_col]] == ctrl)  # cluster内 control
-    c <- sum(!in_cl & md[[status_col]] == case)  # cluster外 AD
-    d <- sum(!in_cl & md[[status_col]] == ctrl)  # cluster外 control
+    a <- sum(in_cl  & md[[status_col]] == case)
+    b <- sum(in_cl  & md[[status_col]] == ctrl)
+    c <- sum(!in_cl & md[[status_col]] == case)
+    d <- sum(!in_cl & md[[status_col]] == ctrl)
 
     ft <- fisher.test(matrix(c(a, b, c, d), nrow = 2, byrow = TRUE))
     data.frame(
@@ -252,12 +301,10 @@ dev.off()
 # Then DEG
 
 clusters <- sort(unique(seu@meta.data$seurat_clusters))
-clusters <- sort(unique(mc_ALL@meta.data$seurat_clusters))
-
 wb <- createWorkbook()
 
 for (cl in clusters) {
-  obj_cl <- subset(mc_ALL, subset = seurat_clusters == cl)
+  obj_cl <- subset(seu, subset = seurat_clusters == cl)
   Idents(obj_cl) <- "AD_status"
   deg <- FindMarkers(
     obj_cl,
@@ -298,7 +345,7 @@ seurat_obj <- SetupForWGCNA(
   wgcna_name = "Astrocyte031826"
 )
 
-# 2) Metacell
+
 seurat_obj <- MetacellsByGroups(
   seurat_obj = seurat_obj,
   group.by = c("seurat_clusters", "AD_status","ALL"),
