@@ -43,12 +43,12 @@ astro <- LoadH5Seurat(
 )
 
 astro
-GetAssayData(astro,layer = "counts")                    # list assay names
+GetAssayData(astro,layer = "counts") 
 DefaultAssay(astro)
 head(astro@meta.data)
 dim(astro)
 
-xlsx_path <- "ROSMAP_ID_Status.xlsx"   # <- change this
+xlsx_path <- "ROSMAP_ID_Status.xlsx" 
 
 samp <- read_excel("ROSMAP_ID_Status.xlsx",sheet = 1, na = c("NA","N/A",""))
 
