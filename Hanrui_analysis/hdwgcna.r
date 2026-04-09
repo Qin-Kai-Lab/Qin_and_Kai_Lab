@@ -98,7 +98,7 @@ anno <- suppressWarnings(
   AnnotationDbi::select(org.Hs.eg.db, keys=all_genes,
                         keytype="SYMBOL", columns=c("SYMBOL","CHR"))
 )
-# Remove unnecessary genes
+
 anno2 <- anno %>%
   filter(!is.na(CHR)) %>%
   mutate(CHR = gsub("^chr","", CHR, ignore.case = TRUE)) %>%
@@ -330,7 +330,43 @@ for (cl in clusters) {
   freezePane(wb, sheet_name, firstRow = TRUE)
   setColWidths(wb, sheet_name, cols = 1:ncol(deg), widths = "auto")
 }
-saveWorkbook(wb, file = "DEG_by_cluster_AD_vs_control_NoSexMT_pc50_res08_k40_031826Seed123.xlsx", overwrite = TRUE)
+saveWorkbook(wb, file = "DEG_by_cluster_AD_vs_control_NoSexMT_pc50_res08_k40_Seed123.xlsx", overwrite = TRUE)
+
+
+wb <- createWorkbook()
+for (cl in clusters) {
+  #obj_cl <- subset(seu, subset = seurat_clusters == cl)
+  #obj_cl <- subset(seu, subset = seurat_clusters == cl)
+  obj_cl = seu
+  #Idents(obj_cl) <- "AD_status"
+  Idents(obj_cl) <- "seurat_clusters"
+  deg <- FindMarkers(
+    obj_cl,
+    ident.1 = cl,
+    logfc.threshold = 0,
+    min.pct = 0.1,
+    test.use = "wilcox"
+  )
+  # first column gene 
+  deg <- deg %>%
+    rownames_to_column("gene") %>%
+    mutate(FDR_BH = p.adjust(p_val, method = "BH")) %>%
+    relocate(gene, .before = 1)
+  # deg <- deg %>% rename(logFC = avg_log2FC)
+
+  sheet_name <- paste0("cluster_", cl)
+  sheet_name <- substr(gsub("[\\[\\]\\*\\?/\\\\:]", "_", sheet_name), 1, 31)
+
+  addWorksheet(wb, sheet_name)
+  writeDataTable(wb, sheet_name, deg, tableStyle = "TableStyleLight9")
+
+  freezePane(wb, sheet_name, firstRow = TRUE)
+  setColWidths(wb, sheet_name, cols = 1:ncol(deg), widths = "auto")
+}
+saveWorkbook(wb, file = "DEG_by_cluster_marker_NoSexMT_pc50_res08_k40_Seed123.xlsx", overwrite = TRUE)
+
+
+
 
 
 # update seurat object to WGCNA format
@@ -395,7 +431,6 @@ png("hdWGCNA_dendrogram_ALL_pc50_res08_k40_032526.png", width = 10, height = 7, 
 PlotDendrogram(mc_ALL, main='ALL hdWGCNA Dendrogram')
 
 dev.off()
-
 
 
 mc_ALL <- ModuleEigengenes(mc_ALL)
